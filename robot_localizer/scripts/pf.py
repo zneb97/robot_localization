@@ -4,7 +4,7 @@
 
 from __future__ import print_function, division
 import rospy
-from geometry_msgs.msg import PoseWithCovarianceStamped, PoseArray
+from geometry_msgs.msg import PoseWithCovarianceStamped, PoseArray, Pose
 
 from helper_functions import TFHelper
 from occupancy_field import OccupancyField
@@ -38,6 +38,10 @@ class ParticleFilter(object):
             by another ROS Node or could come from the rviz GUI """
         xy_theta = \
             self.transform_helper.convert_pose_to_xy_and_theta(msg.pose.pose)
+
+        # TODO this should be deleted before posting
+        self.transform_helper.fix_map_to_odom_transform(msg.pose.pose,
+                                                        msg.header.stamp)
         # initialize your particle filter based on the xy_theta tuple
 
     def run(self):
@@ -46,7 +50,7 @@ class ParticleFilter(object):
         while not(rospy.is_shutdown()):
             # in the main loop all we do is continuously broadcast the latest
             # map to odom transform
-            self.transform_helper.broadcast_last_transform()
+            self.transform_helper.send_last_map_to_odom_transform()
             r.sleep()
 
 

@@ -106,5 +106,5 @@ class TFHelper(object):
         self.tf_broadcaster.sendTransform(self.translation,
                                           self.rotation,
                                           rospy.get_rostime(),
-                                          self.odom_frame,
-                                          self.map_frame)
+                                          'odom',
+                                          'map')
