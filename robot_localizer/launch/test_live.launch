@@ -1,11 +1,28 @@
 <launch>
-  <!-- Map server -->
-  <arg name="map_file"/>
   <arg name="scan_topic" default="stable_scan"/>
-  <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)"/>
+  <arg name="use_builtin" default="false"/>
+  <arg name="map_file"/>
+ 
+  <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)"/> 
+ 
+ <!-- Localization node
 
-  <!-- Localization -->
+	This launch file either uses the built in particle filter AMCL or the
+	particle filter you are implementing.
+  -->
+
+ <group if="$(arg use_builtin)">
+  <include file="$(find neato_2dnav)/launch/includes/amcl.launch.xml">
+    <arg name="scan_topic" value="$(arg scan_topic)"/>
+    <arg name="initial_pose_x" value="0.0"/>
+    <arg name="initial_pose_y" value="0.0"/>
+    <arg name="initial_pose_a" value="0.0"/>
+  </include>
+ </group>
+
+ <group unless="$(arg use_builtin)">
   <node name="pf" pkg="robot_localizer" type="pf.py" output="screen">
     <remap from="scan" to="$(arg scan_topic)"/>
   </node>
+</group>
 </launch>
