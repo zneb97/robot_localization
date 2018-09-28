@@ -17,10 +17,13 @@ class ParticleFilter(object):
         rospy.init_node('pf')
 
         # pose_listener responds to selection of a new approximate robot
-        # location (for instance using rviz)
+        # location (for instance using rviz) 
+        #2D Location estimator button from RVIZ
         rospy.Subscriber("initialpose",
                          PoseWithCovarianceStamped,
                          self.update_initial_pose)
+
+
 
         # publisher for the particle cloud for visualizing in rviz.
         self.particle_pub = rospy.Publisher("particlecloud",
@@ -35,13 +38,17 @@ class ParticleFilter(object):
     def update_initial_pose(self, msg):
         """ Callback function to handle re-initializing the particle filter
             based on a pose estimate.  These pose estimates could be generated
-            by another ROS Node or could come from the rviz GUI """
+            by another ROS Node or could come from the rviz GUI. From 2D Position locator button """
+
+        #This will be in map frame
         xy_theta = \
             self.transform_helper.convert_pose_to_xy_and_theta(msg.pose.pose)
-
+    
+    
         # TODO this should be deleted before posting
         self.transform_helper.fix_map_to_odom_transform(msg.pose.pose,
                                                         msg.header.stamp)
+
         # initialize your particle filter based on the xy_theta tuple
 
     def run(self):
