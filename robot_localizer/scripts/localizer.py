@@ -46,6 +46,7 @@ class SensorArray:
 
 
         #ROS
+        rospy.init_node('manage_sensors')
         rospy.Subscriber("/scan", LaserScan, self.checkLaser)
         rospy.Subscriber("/odom", Odometry, self.setLocation)
 

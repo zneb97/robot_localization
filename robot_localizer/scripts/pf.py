@@ -5,7 +5,7 @@
 from __future__ import print_function, division
 import rospy
 from geometry_msgs.msg import PoseWithCovarianceStamped, PoseArray, Pose
-
+from localizer import SensorArray
 from helper_functions import TFHelper
 from occupancy_field import OccupancyField
 
@@ -14,6 +14,8 @@ class ParticleFilter(object):
     """ The class that represents a Particle Filter ROS Node
     """
     def __init__(self):
+
+        self.sensorManager = SensorArray()
         rospy.init_node('pf')
 
         # pose_listener responds to selection of a new approximate robot
@@ -44,12 +46,14 @@ class ParticleFilter(object):
         xy_theta = \
             self.transform_helper.convert_pose_to_xy_and_theta(msg.pose.pose)
     
-    
+
         # TODO this should be deleted before posting
         self.transform_helper.fix_map_to_odom_transform(msg.pose.pose,
                                                         msg.header.stamp)
 
         # initialize your particle filter based on the xy_theta tuple
+
+    
 
     def run(self):
         r = rospy.Rate(5)
@@ -57,6 +61,7 @@ class ParticleFilter(object):
         while not(rospy.is_shutdown()):
             # in the main loop all we do is continuously broadcast the latest
             # map to odom transform
+
             self.transform_helper.send_last_map_to_odom_transform()
             r.sleep()
 
