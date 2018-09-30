@@ -11,11 +11,16 @@ from localizer import SensorArray
 from helper_functions import TFHelper
 from occupancy_field import OccupancyField
 
+#Covariance for multi-dimensional normalizaion
 normal_2d = [[.75,0],[0,.75]]
 
+
 def angle_normalize(z):
-    """ convenience function to map an angle to the range [-pi,pi] """
+    """
+    Convenience function to map an angle to the range [-pi,pi]
+    """
     return atan2(sin(z), cos(z))
+
 
 class ParticleManager:
 
@@ -25,13 +30,16 @@ class ParticleManager:
 		self.current_particles = []
 		self.max_particles = 200
 		self.percent_keep = 0.2
-		self.num_mult = 4
-
+		self.num_mult = max_particles*percent_keep/10
 
 		#ROS 
 		rospy.init_node('particle_manager')
 
+
 	def initParticles(self, xy_yaw):
+		"""
+		Place particles based on the robot's initial 2D estimated position
+		"""
 		yaws = np.random.normal(xy_yaw[2], math.pi/6.0, self.max_particles)
 		locations = np.random.multivariate_normal([xy_yaw[0], xy_yaw[1]], normal_2d, self.max_particles)
 
@@ -41,10 +49,23 @@ class ParticleManager:
 
 
 	def getParticles(self):
-		pass
+		"""
+		Debugging functions, prints map location, heading, and weighting for
+		each particle
+		"""
+		for particle in current_particles:
+			print("X: %f, Y: %f, Theta: %f, Weight: %f" %(particle.x, particle.y, particle.yaw, particle.weight))
 
 
 	def addParticles(self):
+		"""
+		First pass. Knowing we cull 80% of particles each iteration
+		we add 4 new ones around the remaining ones
+
+		TODO: Distribute the number of particles around the current particles based on
+		their weight
+
+		"""
 		new_particles = []
 		for particle in current_particles:
 
@@ -56,6 +77,7 @@ class ParticleManager:
 				self.new_particles.append(new_particle)
 
 		self.current_particles += new_particles
+
 
 class Particle:
 

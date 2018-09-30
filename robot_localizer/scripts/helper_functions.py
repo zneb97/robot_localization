@@ -23,6 +23,7 @@ class TFHelper(object):
         self.tf_listener = TransformListener()
         self.tf_broadcaster = TransformBroadcaster()
 
+
     def convert_translation_rotation_to_pose(self, translation, rotation):
         """ Convert from representation of a pose as translation and rotation
             (Quaternion) tuples to a geometry_msgs/Pose message """
@@ -33,6 +34,7 @@ class TFHelper(object):
                                            y=rotation[1],
                                            z=rotation[2],
                                            w=rotation[3]))
+
 
     def convert_pose_inverse_transform(self, pose):
         """ This is a helper method to invert a transform (this is built into
@@ -49,6 +51,7 @@ class TFHelper(object):
         return (t.translation_from_matrix(inverse_transform_matrix),
                 t.quaternion_from_matrix(inverse_transform_matrix))
 
+
     def convert_pose_to_xy_and_theta(self, pose):
         """ Convert pose (geometry_msgs.Pose) to a (x,y,yaw) tuple """
         orientation_tuple = (pose.orientation.x,
@@ -58,9 +61,11 @@ class TFHelper(object):
         angles = t.euler_from_quaternion(orientation_tuple)
         return (pose.position.x, pose.position.y, angles[2])
 
+
     def angle_normalize(self, z):
         """ convenience function to map an angle to the range [-pi,pi] """
         return math.atan2(math.sin(z), math.cos(z))
+
 
     def angle_diff(self, a, b):
         """ Calculates the difference between angle a and angle b (both should
@@ -82,6 +87,7 @@ class TFHelper(object):
         else:
             return d2
 
+
     def fix_map_to_odom_transform(self, robot_pose, timestamp):
         """ This method constantly updates the offset of the map and
             odometry coordinate systems based on the latest results from
@@ -99,6 +105,7 @@ class TFHelper(object):
         self.odom_to_map = self.tf_listener.transformPose('odom', p)
         (self.translation, self.rotation) = \
             self.convert_pose_inverse_transform(self.odom_to_map.pose)
+
 
     def send_last_map_to_odom_transform(self):
         if not(hasattr(self, 'translation') and hasattr(self, 'rotation')):
