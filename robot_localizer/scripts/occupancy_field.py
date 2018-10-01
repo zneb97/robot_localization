@@ -78,11 +78,11 @@ class OccupancyField(object):
 
         # check if we are in bounds
         if x_coord > self.map.info.width or x_coord < 0:
-            return float('nan')
+            return np.inf
         if y_coord > self.map.info.height or y_coord < 0:
-            return float('nan')
+            return np.inf
 
         ind = x_coord + y_coord*self.map.info.width
         if ind >= self.map.info.width*self.map.info.height or ind < 0:
-            return float('nan')
+            return np.inf
         return self.closest_occ[ind]

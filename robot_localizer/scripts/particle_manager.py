@@ -32,7 +32,7 @@ class ParticleManager:
 		self.percent_keep = 0.2
 		self.num_mult = max_particles*percent_keep/10
 
-		#ROS 
+		#ROS
 		rospy.init_node('particle_manager')
 
 
@@ -40,12 +40,11 @@ class ParticleManager:
 		"""
 		Place particles based on the robot's initial 2D estimated position
 		"""
-		yaws = np.random.normal(xy_yaw[2], math.pi/6.0, self.max_particles)
-		locations = np.random.multivariate_normal([xy_yaw[0], xy_yaw[1]], normal_2d, self.max_particles)
-
-		for i in range(self.max_particles):
-			new_particle = Particle(locations[i][0], locations[i][1], angle_normalize(yaws[i]))
-			self.current_particles.append(new_particle)
+		yaws = np.expand_dims(np.random.normal(xy_yaw[2], math.pi/6.0, self.max_particles))
+		xs = np.expand_dims(np.random.normal(xy_yaw[0], .75, self.max_particles))
+		ys = np.expand_dims(np.random.normal(xy_yaw[1], ,75, self.max_particles))
+		weights = np.expand_dims(np.zeros_like(locations))
+        self.current_particles = np.concatentate([xs, ys, yaws, weights],axis = 1)
 
 
 	def getParticles(self):
@@ -54,7 +53,7 @@ class ParticleManager:
 		each particle
 		"""
 		for particle in current_particles:
-			print("X: %f, Y: %f, Theta: %f, Weight: %f" %(particle.x, particle.y, particle.yaw, particle.weight))
+			print("X: %f, Y: %f, Theta: %f, Weight: %f" %(particle[0], particle[1], particle[2], particle[3]))
 
 
 	def addParticles(self):
@@ -69,21 +68,35 @@ class ParticleManager:
 		new_particles = []
 		for particle in current_particles:
 
-			yaws = np.random.normal(particle.yaw, math.pi/6.0, self.num_mult)
-			locations = np.random.multivariate_normal([particle.x, particle.y], normal_2d, self.num_mult)
+			yaws = np.expand_dims(np.random.normal(paricle[2], math.pi/6.0, self.num_mult))
+			xs = np.expand_dims(np.random.normal(paricle[0], .75, self.max_particles))
+    		ys = np.expand_dims(np.random.normal(paricle[1], ,75, self.max_particles))
+		    weights = np.expand_dims(np.zeros_like(locations))
+		    new_particles.append(np.concatentate([xs, ys, yaws, weights],axis = 1))
+        new_particles = np.concatentate(new_particles, axis = 0)
 
-			for i in range(self.num_mult):
-				new_particle = Particle(locations[i][0], locations[i][1], angle_normalize(yaws[i]))
-				self.new_particles.append(new_particle)
+		self.current_particles = np.concatentate([self.current_particles, new_particles], axis = 0)
 
-		self.current_particles += new_particles
+    def deleteParticles(self, dt0_r_dt1, closest_point, OccupancyField):
+        self.updateParticles(dt0_r_dt1)
+        self.updateWeights(OccupancyField)
+        indices_good = np.argmin(self.current_particles[:,3])
+        self.current_particles = self.current_particles[indices_good]
 
+    def updateParticles(self, dt0_r_dt1):
+        yaw = self.current_particles[:,2]
+        dt0, r, dt1 = dt0_r_dt1
+        yaw = yaw + dt0
+        dx = r * np.cos(yaw)#if normal coordinate system
+        dy = r * np.sin(yaw)
+        yaw = yaw + dt1
+        self.current_particles[:,2] = yaw
+        self.current_particles[:,0] += dx
+        self.current_particles[:,1] += dy
 
-class Particle:
-
-	def __init__(self, x, y, yaw):
-
-		self.x = x
-		self.y = y
-		self.yaw = yaw
-		self.weight = None
+    def updateWeights(self, closest_point, OccupancyField):
+        for index in range(len(self.current_particles)):
+            x = self.current_particles[index,0]
+            y = self.current_particles[index,1]
+            p_closest = OccupancyField.get_closest_obstacle_distance(x, y)
+            self.current_particles[index, 3] = p_closest
