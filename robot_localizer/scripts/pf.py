@@ -6,6 +6,7 @@ from __future__ import print_function, division
 import rospy
 from geometry_msgs.msg import PoseWithCovarianceStamped, PoseArray, Pose
 from localizer import SensorArray
+from particle_manager import ParticleManager
 from helper_functions import TFHelper
 from occupancy_field import OccupancyField
 
@@ -15,7 +16,8 @@ class ParticleFilter(object):
     """
     def __init__(self):
 
-        self.sensorManager = SensorArray()
+        self.sensor_manager = SensorArray()
+        self.particle_manager = ParticleManager()
         rospy.init_node('pf')
 
         # pose_listener responds to selection of a new approximate robot
@@ -37,6 +39,12 @@ class ParticleFilter(object):
         self.occupancy_field = OccupancyField()
         self.transform_helper = TFHelper()
 
+        #Difference in position/heading to trigger particle update
+        self.dtx = .1
+        self.dty = .1
+        self.dtyaw = .1
+
+
     def update_initial_pose(self, msg):
         """ Callback function to handle re-initializing the particle filter
             based on a pose estimate.  These pose estimates could be generated
@@ -52,15 +60,36 @@ class ParticleFilter(object):
                                                         msg.header.stamp)
 
         # initialize your particle filter based on the xy_theta tuple
-
+        self.particle_manager.initParticles(xy_theta)
+        poseArray = PoseArray()
+        for particle in self.particle_manager.current_particles:
+            poseArray.append(self.transform_helper.convert_xy_and_theta_to_pose(particle[0], particle[1], particle[2]))
+        self.particle_pub.publish(poseArray)
     
 
     def run(self):
         r = rospy.Rate(5)
 
+
         while not(rospy.is_shutdown()):
             # in the main loop all we do is continuously broadcast the latest
             # map to odom transform
+
+            #
+            dto, r, dt01 = self.sensor_manager.getDelta()
+
+            if (self.sensor_manager.x>dtx) or (self.sensor_manager.y>dty) or (self.sensor_manager.yaw>dtyaw):
+                self.sensor_manager.laser_flag = True
+                self.sensor_manager.setOld()
+                while(self.sensor_manager.laser_flag):
+                    continue
+                self.particle_manager.deleteParticles((dto, r, dt01), self.sensor_manager.closest_dist, self.occupancy_field)
+                self.particle_manager.addParticles()
+
+                poseArray = PoseArray()
+                for particle in self.particle_manager.current_particles:
+                    poseArray.append(self.transform_helper.convert_xy_and_theta_to_pose(particle[0], particle[1], particle[2]))
+                self.particle_pub.publish(poseArray)
 
             self.transform_helper.send_last_map_to_odom_transform()
             r.sleep()

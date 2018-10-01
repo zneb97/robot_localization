@@ -52,6 +52,7 @@ class ParticleManager:
 		Debugging functions, prints map location, heading, and weighting for
 		each particle
 		"""
+		
 		for particle in current_particles:
 			print("X: %f, Y: %f, Theta: %f, Weight: %f" %(particle[0], particle[1], particle[2], particle[3]))
 
@@ -100,3 +101,5 @@ class ParticleManager:
             y = self.current_particles[index,1]
             p_closest = OccupancyField.get_closest_obstacle_distance(x, y)
             self.current_particles[index, 3] = p_closest
+
+
