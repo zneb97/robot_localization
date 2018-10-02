@@ -57,10 +57,10 @@ class SensorArray:
         #Robot properities
         self.old_x = None
         self.old_y = None
-        self.old_theta = None
+        self.old_yaw = None
         self.x = None
         self.y = None
-        self.theta = None
+        self.yaw = None
 
         #Trigger this to record a laser scan
         self.laser_flag = False
@@ -69,19 +69,18 @@ class SensorArray:
         self.closest_dist = None
 
         #ROS
-        # rospy.init_node('manage_sensors')
         rospy.Subscriber("/scan", LaserScan, self.checkLaser)
         rospy.Subscriber("/odom", Odometry, self.setLocation)
 
 
     def setLocation(self, msg):
         """
-        Convert pose (geometry_msgs.Pose) to a (x, y, theta) tuple
+        Convert pose (geometry_msgs.Pose) to a (x, y, yaw) tuple
         Constantly being called as it is the callback function for this node's subscription
 
         odom is Neato ROS' nav_msgs/Odom msg composed of pose and orientation submessages
         """
-        pose = odom.pose.pose
+        pose = msg.pose.pose
         orientation_tuple = (pose.orientation.x,
                              pose.orientation.y,
                              pose.orientation.z,
@@ -90,7 +89,7 @@ class SensorArray:
 
         self.x = pose.position.x
         self.y = pose.position.y
-        self.theta = angles[2]
+        self.yaw = angles[2]
 
         if self.old_x is None:
             self.setOld()
@@ -98,16 +97,16 @@ class SensorArray:
 
     def getDelta(self):
         """
-        Find the change in the robot's heading and position in terms of thetas
+        Find the change in the robot's heading and position in terms of yaws
         and radius. these can then be passed to our particles to find their new
         positions
         """
         r = distance((self.old_x,self.old_y),(self.x,self.y)) #Linear distance traveled
         t_yaw = atan2(self.y - self.old_y, self.x - self.old_x)
-        dt0 = angle_diff(t_yaw, self.yaw) #Angle to move out radius
+        dt0 = angle_diff(t_yaw, self.old_yaw) #Angle to move out radius
         dt1 = self.yaw - self.old_yaw - dt0 #Final heading of the robot
 
-        return dto, r, dt1
+        return dt0, r, dt1
 
 
     def setOld(self):
@@ -124,12 +123,14 @@ class SensorArray:
         When triggered, find the closest distance in the laser scan
         """
         if self.laser_flag:
-            self.closest_dist = np.min(msg.ranges)
+            ranges = np.array(msg.ranges)
+            self.closest_dist = np.min(ranges[np.nonzero(ranges)])
             self.laser_flag = False
 
 if __name__ == "__main__":
+    rospy.init_node('manage_sensors')
     sensor_manager = SensorArray()
-    r = rospy.Rate(5)
+    rate = rospy.Rate(5)
 
 
     while not(rospy.is_shutdown()):
@@ -137,6 +138,8 @@ if __name__ == "__main__":
         # map to odom transform
 
         #
+        while sensor_manager.old_x is None:
+            continue
         dto, r, dt01 = sensor_manager.getDelta()
         print((dto,r,dt01))
 
@@ -151,4 +154,4 @@ if __name__ == "__main__":
             # self.particle_manager.deleteParticles((dto, r, dt01), self.sensor_manager.closest_dist, self.occupancy_field)
             # self.particle_manager.addParticles()
 
-        r.sleep()
+        rate.sleep()
