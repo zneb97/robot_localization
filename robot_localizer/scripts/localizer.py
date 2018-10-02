@@ -104,7 +104,7 @@ class SensorArray:
         r = distance((self.old_x,self.old_y),(self.x,self.y)) #Linear distance traveled
         t_yaw = atan2(self.y - self.old_y, self.x - self.old_x)
         dt0 = angle_diff(t_yaw, self.old_yaw) #Angle to move out radius
-        dt1 = self.yaw - self.old_yaw - dt0 #Final heading of the robot
+        dt1 = angle_normalize(self.yaw - self.old_yaw - dt0) #Final heading of the robot
 
         return dt0, r, dt1
 
