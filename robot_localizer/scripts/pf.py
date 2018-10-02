@@ -9,12 +9,15 @@ from localizer import SensorArray
 from particle_manager import ParticleManager
 from helper_functions import TFHelper
 from occupancy_field import OccupancyField
+from std_msgs.msg import Header
 
 
 class ParticleFilter(object):
     """ The class that represents a Particle Filter ROS Node
     """
     def __init__(self):
+        self.occupancy_field = OccupancyField()
+        self.transform_helper = TFHelper()
 
         self.sensor_manager = SensorArray()
         self.particle_manager = ParticleManager()
@@ -36,13 +39,10 @@ class ParticleFilter(object):
 
         # create instances of two helper objects that are provided to you
         # as part of the project
-        self.occupancy_field = OccupancyField()
-        self.transform_helper = TFHelper()
 
-        #Difference in position/heading to trigger particle update
-        self.dtx = .1
-        self.dty = .1
-        self.dtyaw = .1
+
+        #Difference in position to trigger particle update
+        self.movement_threshold = .5 
 
 
     def update_initial_pose(self, msg):
@@ -61,24 +61,26 @@ class ParticleFilter(object):
 
         # initialize your particle filter based on the xy_theta tuple
         self.particle_manager.initParticles(xy_theta)
-        poseArray = PoseArray()
+        poseArray = PoseArray(header = Header(seq = 10, stamp = rospy.get_rostime(), frame_id = 'map'))
         for particle in self.particle_manager.current_particles:
-            poseArray.append(self.transform_helper.convert_xy_and_theta_to_pose(particle[0], particle[1], particle[2]))
+            poseArray.poses.append(self.transform_helper.convert_xy_and_theta_to_pose(particle[0], particle[1], particle[2]))
         self.particle_pub.publish(poseArray)
     
 
     def run(self):
-        r = rospy.Rate(5)
-
+        rate = rospy.Rate(5)
+        while self.sensor_manager.old_x is None or (not len(self.particle_manager.current_particles)):
+            continue
 
         while not(rospy.is_shutdown()):
             # in the main loop all we do is continuously broadcast the latest
             # map to odom transform
 
             #
+
             dto, r, dt01 = self.sensor_manager.getDelta()
 
-            if (self.sensor_manager.x>dtx) or (self.sensor_manager.y>dty) or (self.sensor_manager.yaw>dtyaw):
+            if r > self.movement_threshold:
                 self.sensor_manager.laser_flag = True
                 self.sensor_manager.setOld()
                 while(self.sensor_manager.laser_flag):
@@ -86,13 +88,13 @@ class ParticleFilter(object):
                 self.particle_manager.deleteParticles((dto, r, dt01), self.sensor_manager.closest_dist, self.occupancy_field)
                 self.particle_manager.addParticles()
 
-                poseArray = PoseArray()
+                poseArray = PoseArray(header = Header(seq = 10, stamp = rospy.get_rostime(), frame_id = 'map'))
                 for particle in self.particle_manager.current_particles:
-                    poseArray.append(self.transform_helper.convert_xy_and_theta_to_pose(particle[0], particle[1], particle[2]))
+                    poseArray.poses.append(self.transform_helper.convert_xy_and_theta_to_pose(particle[0], particle[1], particle[2]))
                 self.particle_pub.publish(poseArray)
 
             self.transform_helper.send_last_map_to_odom_transform()
-            r.sleep()
+            rate.sleep()
 
 
 if __name__ == '__main__':

@@ -35,7 +35,7 @@ class ParticleManager:
         self.num_mult = self.max_particles*self.percent_keep/10
 
         #ROS
-        rospy.init_node('particle_manager')
+        # rospy.init_node('particle_manager')
 
 
     def initParticles(self, xy_yaw):
