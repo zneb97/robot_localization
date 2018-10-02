@@ -69,7 +69,7 @@ class SensorArray:
         self.closest_dist = None
 
         #ROS
-        rospy.init_node('manage_sensors')
+        # rospy.init_node('manage_sensors')
         rospy.Subscriber("/scan", LaserScan, self.checkLaser)
         rospy.Subscriber("/odom", Odometry, self.setLocation)
 
@@ -126,3 +126,29 @@ class SensorArray:
         if self.laser_flag:
             self.closest_dist = np.min(msg.ranges)
             self.laser_flag = False
+
+if __name__ == "__main__":
+    sensor_manager = SensorArray()
+    r = rospy.Rate(5)
+
+
+    while not(rospy.is_shutdown()):
+        # in the main loop all we do is continuously broadcast the latest
+        # map to odom transform
+
+        #
+        dto, r, dt01 = sensor_manager.getDelta()
+        print((dto,r,dt01))
+
+        if r > .5:
+            sensor_manager.laser_flag = True
+            sensor_manager.setOld()
+            while(sensor_manager.laser_flag):
+                continue
+            print("Update partciles!")
+            print('NEW LASER' + str(sensor_manager.closest_dist))
+
+            # self.particle_manager.deleteParticles((dto, r, dt01), self.sensor_manager.closest_dist, self.occupancy_field)
+            # self.particle_manager.addParticles()
+
+        r.sleep()
