@@ -11,6 +11,7 @@ import math
 from std_msgs.msg import String
 from tf.transformations import euler_from_quaternion, rotation_matrix, quaternion_from_matrix
 from geometry_msgs.msg import Pose, Twist, Vector3
+from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 import numpy as np
 from math import sin, cos, atan2, pi, fabs
@@ -86,12 +87,13 @@ class SensorArray:
                              pose.orientation.z,
                              pose.orientation.w)
         angles = euler_from_quaternion(orientation_tuple)
-        self.setOld()
+
         self.x = pose.position.x
         self.y = pose.position.y
         self.theta = angles[2]
 
-        return (pose.position.x, pose.position.y, angles[2])
+        if self.old_x is None:
+            self.setOld()
 
 
     def getDelta(self):

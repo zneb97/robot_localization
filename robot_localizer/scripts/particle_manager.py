@@ -24,59 +24,59 @@ def angle_normalize(z):
 
 class ParticleManager:
 
-	def __init__(self):
+    def __init__(self):
 
-		self.sensorManager = SensorArray()
-		self.current_particles = []
-		self.max_particles = 200
-		self.percent_keep = 0.2
-		self.num_mult = max_particles*percent_keep/10
+        self.sensorManager = SensorArray()
+        self.current_particles = []
+        self.max_particles = 200
+        self.percent_keep = 0.2
+        self.num_mult = max_particles*percent_keep/10
 
-		#ROS
-		rospy.init_node('particle_manager')
+        #ROS
+        rospy.init_node('particle_manager')
 
 
-	def initParticles(self, xy_yaw):
-		"""
-		Place particles based on the robot's initial 2D estimated position
-		"""
-		yaws = np.expand_dims(np.random.normal(xy_yaw[2], math.pi/6.0, self.max_particles))
-		xs = np.expand_dims(np.random.normal(xy_yaw[0], .75, self.max_particles))
-		ys = np.expand_dims(np.random.normal(xy_yaw[1], ,75, self.max_particles))
-		weights = np.expand_dims(np.zeros_like(locations))
+    def initParticles(self, xy_yaw):
+        """
+        Place particles based on the robot's initial 2D estimated position
+        """
+        yaws = np.expand_dims(np.random.normal(xy_yaw[2], math.pi/6.0, self.max_particles))
+        xs = np.expand_dims(np.random.normal(xy_yaw[0], .75, self.max_particles))
+        ys = np.expand_dims(np.random.normal(xy_yaw[1], .75, self.max_particles))
+        weights = np.expand_dims(np.zeros_like(locations))
         self.current_particles = np.concatentate([xs, ys, yaws, weights],axis = 1)
 
 
-	def getParticles(self):
-		"""
-		Debugging functions, prints map location, heading, and weighting for
-		each particle
-		"""
-		
-		for particle in current_particles:
-			print("X: %f, Y: %f, Theta: %f, Weight: %f" %(particle[0], particle[1], particle[2], particle[3]))
+    def getParticles(self):
+        """
+        Debugging functions, prints map location, heading, and weighting for
+        each particle
+        """
+        
+        for particle in current_particles:
+            print("X: %f, Y: %f, Theta: %f, Weight: %f" %(particle[0], particle[1], particle[2], particle[3]))
 
 
-	def addParticles(self):
-		"""
-		First pass. Knowing we cull 80% of particles each iteration
-		we add 4 new ones around the remaining ones
+    def addParticles(self):
+        """
+        First pass. Knowing we cull 80% of particles each iteration
+        we add 4 new ones around the remaining ones
 
-		TODO: Distribute the number of particles around the current particles based on
-		their weight
+        TODO: Distribute the number of particles around the current particles based on
+        their weight
 
-		"""
-		new_particles = []
-		for particle in current_particles:
+        """
+        new_particles = []
+        for particle in current_particles:
 
-			yaws = np.expand_dims(np.random.normal(paricle[2], math.pi/6.0, self.num_mult))
-			xs = np.expand_dims(np.random.normal(paricle[0], .75, self.max_particles))
-    		ys = np.expand_dims(np.random.normal(paricle[1], ,75, self.max_particles))
-		    weights = np.expand_dims(np.zeros_like(locations))
-		    new_particles.append(np.concatentate([xs, ys, yaws, weights],axis = 1))
+            yaws = np.expand_dims(np.random.normal(paricle[2], math.pi/6.0, self.num_mult))
+            xs = np.expand_dims(np.random.normal(paricle[0], .75, self.max_particles))
+            ys = np.expand_dims(np.random.normal(paricle[1], .75, self.max_particles))
+            weights = np.expand_dims(np.zeros_like(locations))
+            new_particles.append(np.concatentate([xs, ys, yaws, weights],axis = 1))
         new_particles = np.concatentate(new_particles, axis = 0)
 
-		self.current_particles = np.concatentate([self.current_particles, new_particles], axis = 0)
+        self.current_particles = np.concatentate([self.current_particles, new_particles], axis = 0)
 
     def deleteParticles(self, dt0_r_dt1, closest_point, OccupancyField):
         self.updateParticles(dt0_r_dt1)
