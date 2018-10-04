@@ -121,11 +121,14 @@ class SensorArray:
     def checkLaser(self, msg):
         """
         When triggered, find the closest distance in the laser scan
+
+        msg - LaserScan rosmsg
         """
         if self.laser_flag:
             ranges = np.array(msg.ranges)
             self.closest_dist = np.min(ranges[np.nonzero(ranges)])
             self.laser_flag = False
+
 
 if __name__ == "__main__":
     rospy.init_node('manage_sensors')

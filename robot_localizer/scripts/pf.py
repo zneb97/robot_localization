@@ -1,11 +1,17 @@
 #!/usr/bin/env python
 
-""" This is the starter code for the robot localization project """
+"""
+Ben Ziemann / Nick Steelman
+Last updated: 10/3/18
+
+Trigger updates to particles to determine location of the robot
+Interface with Rviz for visualization
+"""
 
 from __future__ import print_function, division
 import rospy
 from geometry_msgs.msg import PoseWithCovarianceStamped, PoseArray, Pose
-from localizer import SensorArray
+from sensorArray import SensorArray
 from particle_manager import ParticleManager
 from helper_functions import TFHelper
 from occupancy_field import OccupancyField
@@ -69,18 +75,18 @@ class ParticleFilter(object):
 
     def run(self):
         rate = rospy.Rate(5)
+
+        #Ensure particles have been placed
         while self.sensor_manager.old_x is None or (not len(self.particle_manager.current_particles)):
             continue
 
         while not(rospy.is_shutdown()):
-            # in the main loop all we do is continuously broadcast the latest
-            # map to odom transform
 
-            #
-
+            #See how the robot has moved
             dto, r, dt01 = self.sensor_manager.getDelta()
 
             if r > self.movement_threshold:
+                #Trigger scan data
                 self.sensor_manager.laser_flag = True
                 self.sensor_manager.setOld()
                 while(self.sensor_manager.laser_flag):
@@ -88,6 +94,7 @@ class ParticleFilter(object):
                 self.particle_manager.deleteParticles((dto, r, dt01), self.sensor_manager.closest_dist, self.occupancy_field)
                 self.particle_manager.addParticles()
 
+                #Rviz
                 poseArray = PoseArray(header = Header(seq = 10, stamp = rospy.get_rostime(), frame_id = 'map'))
                 for particle in self.particle_manager.current_particles:
                     poseArray.poses.append(self.transform_helper.convert_xy_and_theta_to_pose(particle[0], particle[1], particle[2]))

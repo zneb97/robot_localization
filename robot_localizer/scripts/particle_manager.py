@@ -1,13 +1,19 @@
 #!/usr/bin/env python
 
-""" This is the starter code for the robot localization project """
+"""
+Ben Ziemann / Nick Steelman
+Last updated: 10/3/18
+
+Position, cull, and update particles as needed to determine location
+of the robot
+"""
 
 from __future__ import print_function, division
 import rospy
 import numpy as np
 import math
 from geometry_msgs.msg import PoseWithCovarianceStamped, PoseArray, Pose
-from localizer import SensorArray
+from SensorArray import SensorArray
 from helper_functions import TFHelper
 from occupancy_field import OccupancyField
 import matplotlib.pyplot as mpl
@@ -41,6 +47,8 @@ class ParticleManager:
     def initParticles(self, xy_yaw):
         """
         Place particles based on the robot's initial 2D estimated position
+
+        xy_yaw - Tuple of robots initial (x,y,yaw) map position
         """
         yaws = np.expand_dims(np.random.normal(xy_yaw[2], math.pi/6.0, self.max_particles), -1)
         xs = np.expand_dims(np.random.normal(xy_yaw[0], .75, self.max_particles), -1)
@@ -62,7 +70,7 @@ class ParticleManager:
     def addParticles(self):
         """
         First pass. Knowing we cull 80% of particles each iteration
-        we add 4 new ones around the remaining ones
+        we add 4 new ones around the remaining ones.
 
         TODO: Distribute the number of particles around the current particles based on
         their weight
@@ -80,14 +88,35 @@ class ParticleManager:
 
         self.current_particles = np.concatenate([self.current_particles, new_particles], axis = 0)
 
-    def deleteParticles(self, dt0_r_dt1, closest_point, OccupancyField):
+
+    def deleteParticles(self, dt0_r_dt1, closest_point, occupancy_field):
+        """
+        Cull particles based on distance to nearest object
+
+        dt0_r_dt1 - tuple for the robots movement to map onto particles
+            dt0 - how much the robot turned from its original location to drive in a straight line to new location
+            r - distance (meters) how far to drive to new position
+            dt1 - change from dt0 to robot's current heading
+        closest_point - distance (meters) that the closest occupancy to the robot is
+        occupancy_field - array of distance to closest occupancy for any given map coordinate
+        """
+
         self.updateParticles(dt0_r_dt1)
-        self.updateWeights(closest_point, OccupancyField)
-        print(self.current_particles[:,3])
+        self.updateWeights(closest_point, occupancy_field)
         indices_good = np.argsort(self.current_particles[:,3])
         self.current_particles = self.current_particles[indices_good[:int(self.max_particles * self.percent_keep)]]
 
+
     def updateParticles(self, dt0_r_dt1):
+        """
+        Update particles' position based on robot's movements
+
+        dt0_r_dt1 - tuple for the robots movement to map onto particles
+            dt0 - how much the robot turned from its original location to drive in a straight line to new location
+            r - distance (meters) how far to drive to new position
+            dt1 - change from dt0 to robot's current heading
+        """
+
         yaw = self.current_particles[:,2]
         dt0, r, dt1 = dt0_r_dt1
         yaw = yaw + dt0
@@ -98,14 +127,26 @@ class ParticleManager:
         self.current_particles[:,0] += dx
         self.current_particles[:,1] += dy
 
+
     def updateWeights(self, closest_point, OccupancyField):
+        """
+        Update the weighting for a given particle based on distance to closest object
+        compared to robot.
+        closest_point - distance (meters) that the closest occupancy to the robot is
+        occupancy_field - array of distance to closest occupancy for any given map coordinate
+        """
+
         for index in range(len(self.current_particles)):
             x = self.current_particles[index,0]
             y = self.current_particles[index,1]
             p_closest = OccupancyField.get_closest_obstacle_distance(x, y)
             self.current_particles[index, 3] = p_closest
 
+
 class OF:
+    """
+    Debugging class to simulate simple occupancy field when running particle_manager solo
+    """
     def __init__(self, point):
         self.x, self.y = point[0], point[1]
 
