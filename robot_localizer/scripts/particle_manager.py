@@ -38,6 +38,8 @@ class ParticleManager:
         self.num_mult = self.max_particles*self.percent_keep/10
         self.std_yaw =  math.pi/6.0
         self.std_pos = .3
+        self.prop_yaw = 5 #proportion of variation in yaw
+        # self.start_part = 1000 # number of particles to start the
         #ROS
         # rospy.init_node('particle_manager')
 
@@ -54,6 +56,36 @@ class ParticleManager:
         ys = np.expand_dims(np.random.normal(xy_yaw[1], init_std, self.max_particles), -1)
         weights = np.zeros_like(ys)
         self.current_particles = np.concatenate([xs, ys, yaws, weights],axis = 1)
+
+    def initParticlesUniform(self, occupancy_field):
+        """ This will initialize a set of points evenly spaced in the map with a
+        variety of angles for each particle """
+        of = occupancy_field
+        num_points = self.max_particles / self.prop_yaw
+        num_x = int(math.pow(num_points,.5))
+        num_y = num_points // num_x
+        dist_x = int(of.map.info.width / num_x)
+        dist_y = int(of.map.info.height / num_y)
+        num_grid = num_x * num_y
+
+        x_values = np.zeros((num_grid,1))
+        for i in range(num_y):
+            x_values[i*num_x: (i+1) * num_x,1] = np.full(num_x, i)
+        y_values = np.expand_dims(np.tile(np.arange(num_y), [num_x]),-1)
+
+        x_values = x_values * dist_x + dist_x//2
+        y_values = y_values * dist_y + dist_y//2
+        x_values = (x_values * of.map.info.resolution)+ of.map.info.origin.position.x
+        y_values = (y_values * of.map.info.resolution)+ of.map.info.origin.position.y
+        yaw_values = np.zeros((num_grid,1))
+        weight_values = np.zeros((num_grid,1))
+        points = np.concatenate([x_values, y_values, yaw_values, weight_values], axis = 1)
+        points = np.tile(points, [self.prop_yaw,1])
+
+        inc = 2 * math.pi / self.prop_yaw
+        for i in range(self.prop_yaw):
+            points[i*num_points: (i+1) * num_points,2] = np.full(points, i * inc)
+        self.current_particles = points
 
 
     def getParticles(self):
@@ -139,6 +171,8 @@ class ParticleManager:
             y = self.current_particles[index,1]
             p_closest = OccupancyField.get_closest_obstacle_distance(x, y)
             self.current_particles[index, 3] = p_closest
+
+
 
 
 class OF:
