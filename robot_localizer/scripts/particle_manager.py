@@ -19,7 +19,6 @@ from occupancy_field import OccupancyField
 import matplotlib.pyplot as mpl
 
 #Covariance for multi-dimensional normalizaion
-normal_2d = [[.75,0],[0,.75]]
 
 
 def angle_normalize(z):
@@ -30,8 +29,6 @@ def angle_normalize(z):
 
 
 class ParticleManager:
-
-
     def __init__(self):
 
         self.sensorManager = SensorArray()
@@ -39,7 +36,8 @@ class ParticleManager:
         self.max_particles = 200
         self.percent_keep = 0.2
         self.num_mult = self.max_particles*self.percent_keep/10
-
+        self.std_yaw =  math.pi/6.0
+        self.std_pos = .3
         #ROS
         # rospy.init_node('particle_manager')
 
@@ -50,9 +48,10 @@ class ParticleManager:
 
         xy_yaw - Tuple of robots initial (x,y,yaw) map position
         """
-        yaws = np.expand_dims(np.random.normal(xy_yaw[2], math.pi/6.0, self.max_particles), -1)
-        xs = np.expand_dims(np.random.normal(xy_yaw[0], .75, self.max_particles), -1)
-        ys = np.expand_dims(np.random.normal(xy_yaw[1], .75, self.max_particles), -1)
+        init_std = .75
+        yaws = np.expand_dims(np.random.normal(xy_yaw[2], self.std_yaw, self.max_particles), -1)
+        xs = np.expand_dims(np.random.normal(xy_yaw[0], init_std, self.max_particles), -1)
+        ys = np.expand_dims(np.random.normal(xy_yaw[1], init_std, self.max_particles), -1)
         weights = np.zeros_like(ys)
         self.current_particles = np.concatenate([xs, ys, yaws, weights],axis = 1)
 
@@ -78,10 +77,9 @@ class ParticleManager:
         """
         new_particles = []
         for particle in self.current_particles:
-
-            yaws = np.expand_dims(np.random.normal(particle[2], math.pi/6.0, self.num_mult), -1)
-            xs = np.expand_dims(np.random.normal(particle[0], .75, self.num_mult), -1)
-            ys = np.expand_dims(np.random.normal(particle[1], .75, self.num_mult), -1)
+            yaws = np.expand_dims(np.random.normal(particle[2], self.std_yaw, self.num_mult), -1)
+            xs = np.expand_dims(np.random.normal(particle[0], self.std_pos, self.num_mult), -1)
+            ys = np.expand_dims(np.random.normal(particle[1], self.std_pos, self.num_mult), -1)
             weights = np.zeros_like(ys)
             new_particles.append(np.concatenate([xs, ys, yaws, weights],axis = 1))
         new_particles = np.concatenate(new_particles, axis = 0)
@@ -169,7 +167,3 @@ if __name__ == "__main__":
     mpl.scatter(pm.current_particles[:,0], pm.current_particles[:,1], c='g')
     mpl.scatter(x,y, c='r')
     mpl.show()
-
-
-
-
