@@ -92,7 +92,9 @@ class SensorArray:
         self.yaw = angles[2]
 
         if self.old_x is None:
+            print("Setting")
             self.setOld()
+        # print("this is our old x %f" %self.old_x)
 
 
     def getDelta(self):

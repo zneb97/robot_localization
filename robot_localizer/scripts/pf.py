@@ -62,8 +62,8 @@ class ParticleFilter(object):
 
 
         # TODO this should be deleted before posting
-        self.transform_helper.fix_map_to_odom_transform(msg.pose.pose,
-                                                        msg.header.stamp)
+        # self.transform_helper.fix_map_to_odom_transform(msg.pose.pose,
+        #                                                 msg.header.stamp)
 
         # initialize your particle filter based on the xy_theta tuple
         self.particle_manager.initParticles(xy_theta)
@@ -80,24 +80,33 @@ class ParticleFilter(object):
         rate = rospy.Rate(5)
 
         #Ensure particles have been placed
+        print("first while")
         while self.sensor_manager.old_x is None or (not len(self.particle_manager.current_particles)):
+            
+            print('Old x ',self.sensor_manager.old_x)
+            print('Len PM ',len(self.particle_manager.current_particles))
+            rate.sleep()
             continue
         # Main Loop
+        print("there are particles now")
         while not(rospy.is_shutdown()):
 
             #See how the robot has moved
             dto, r, dt01 = self.sensor_manager.getDelta()
-
+            print("inside main loop")
             if r > self.movement_threshold: # if the robot moved greater than the desired amount
+                print("Moved enough, updating")
                 #Tell the callback we want the current minimum of the laser scan
                 self.sensor_manager.laser_flag = True
                 #reset pointer to last position we updated
                 self.sensor_manager.setOld()
                 while(self.sensor_manager.laser_flag):
                     continue#wait for confirmation that we have update laser scan
+                print("Flag broken")
+                print(self.sensor_manager.closest_dist)
                 #Keep the most relevant particles
                 self.particle_manager.deleteParticles((dto, r, dt01), self.sensor_manager.closest_dist, self.occupancy_field)
-                #Assign more particles
+                # #Assign more particles
                 self.particle_manager.addParticles()
 
                 #Send current particles via publisher
@@ -105,7 +114,8 @@ class ParticleFilter(object):
                 for particle in self.particle_manager.current_particles:
                     poseArray.poses.append(self.transform_helper.convert_xy_and_theta_to_pose(particle[0], particle[1], particle[2]))
                 self.particle_pub.publish(poseArray)
-                print('Time Left: ', rate.remaining()) #are we over computing for our rate
+                print("Poses published")
+               # print('Time Left: ', rate.remaining()) #are we over computing for our rate
 
 
             #update map position

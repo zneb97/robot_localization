@@ -13,7 +13,7 @@ import rospy
 import numpy as np
 import math
 from geometry_msgs.msg import PoseWithCovarianceStamped, PoseArray, Pose
-from SensorArray import SensorArray
+from sensorArray import SensorArray
 from helper_functions import TFHelper
 from occupancy_field import OccupancyField
 import matplotlib.pyplot as mpl
@@ -31,13 +31,12 @@ def angle_normalize(z):
 class ParticleManager:
     def __init__(self):
 
-        self.sensorManager = SensorArray()
         self.current_particles = []
         self.max_particles = 200
         self.percent_keep = 0.2
         self.num_mult = self.max_particles*self.percent_keep/10
-        self.std_yaw =  math.pi/6.0
-        self.std_pos = .3
+        self.std_yaw =  math.pi/12.0
+        self.std_pos = .1
         self.prop_yaw = 5 #proportion of variation in yaw
         # self.start_part = 1000 # number of particles to start the
         #ROS
@@ -50,7 +49,7 @@ class ParticleManager:
 
         xy_yaw - Tuple of robots initial (x,y,yaw) map position
         """
-        init_std = .75
+        init_std = .05
         yaws = np.expand_dims(np.random.normal(xy_yaw[2], self.std_yaw, self.max_particles), -1)
         xs = np.expand_dims(np.random.normal(xy_yaw[0], init_std, self.max_particles), -1)
         ys = np.expand_dims(np.random.normal(xy_yaw[1], init_std, self.max_particles), -1)
@@ -170,7 +169,8 @@ class ParticleManager:
             x = self.current_particles[index,0]
             y = self.current_particles[index,1]
             p_closest = OccupancyField.get_closest_obstacle_distance(x, y)
-            self.current_particles[index, 3] = p_closest
+
+            self.current_particles[index, 3] = abs(closest_point - p_closest)
 
 
 
