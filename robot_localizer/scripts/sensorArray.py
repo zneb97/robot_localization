@@ -67,6 +67,7 @@ class SensorArray:
 
         #Distance to closest object to the robot
         self.closest_dist = None
+        self.min_index = None
 
         #ROS
         rospy.Subscriber("/scan", LaserScan, self.checkLaser)
@@ -127,9 +128,13 @@ class SensorArray:
         msg - LaserScan rosmsg
         """
         if self.laser_flag:
+            print('Checking Laser')
             ranges = np.array(msg.ranges)
-            self.closest_dist = np.min(ranges[np.nonzero(ranges)])
+            ranges[np.where(ranges==0.0)[0]] = np.inf
+            self.min_index = np.argmin(ranges)
+            self.closest_dist = ranges[self.min_index]
             self.laser_flag = False
+            print('Checked Laser')
 
 
 if __name__ == "__main__":

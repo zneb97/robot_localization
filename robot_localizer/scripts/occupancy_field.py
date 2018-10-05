@@ -8,6 +8,7 @@ import rospy
 from nav_msgs.srv import GetMap
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
+import math
 
 
 class OccupancyField(object):
@@ -58,6 +59,7 @@ class OccupancyField(object):
                                 algorithm="ball_tree").fit(occupied)
         distances, indices = nbrs.kneighbors(X)
 
+        self.index_occ= {}
         self.closest_occ = {}
         curr = 0
         for i in range(self.map.info.width):
@@ -65,6 +67,8 @@ class OccupancyField(object):
                 ind = i + j*self.map.info.width
                 self.closest_occ[ind] = \
                     distances[curr][0]*self.map.info.resolution
+                i_2, j_2 = occupied[indices[curr][0]]
+                self.index_occ[ind] =  math.atan2(j_2-j,i_2-i)
                 curr += 1
 
     def get_closest_obstacle_distance(self, x, y):
@@ -78,11 +82,11 @@ class OccupancyField(object):
 
         # check if we are in bounds
         if x_coord > self.map.info.width or x_coord < 0:
-            return np.inf
+            return np.inf, np.inf
         if y_coord > self.map.info.height or y_coord < 0:
-            return np.inf
+            return np.inf, np.inf
 
         ind = x_coord + y_coord*self.map.info.width
         if ind >= self.map.info.width*self.map.info.height or ind < 0:
-            return np.inf
-        return self.closest_occ[ind]
+            return np.inf, np.inf
+        return self.closest_occ[ind], self.index_occ[ind]

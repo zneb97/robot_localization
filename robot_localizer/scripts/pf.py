@@ -48,7 +48,7 @@ class ParticleFilter(object):
 
 
         #Difference in position to trigger particle update
-        self.movement_threshold = .2
+        self.movement_threshold = .1
 
 
     def update_initial_pose(self, msg):
@@ -66,7 +66,16 @@ class ParticleFilter(object):
         #                                                 msg.header.stamp)
 
         # initialize your particle filter based on the xy_theta tuple
-        self.particle_manager.initParticles(xy_theta)
+        # self.particle_manager.initParticlesUniform(self.occupancy_field)
+        self.sensor_manager.laser_flag = True
+        print('Entering While')
+
+        while(self.sensor_manager.laser_flag):
+                    print('Im going')
+                    rospy.sleep(.5)
+                    continue#wait for confirmation that we have update laser scan
+        print('EXITING While')
+        self.particle_manager.initParticleHeading(xy_theta, self.occupancy_field, self.sensor_manager.min_index)
         # send an initial pose array
         poseArray = PoseArray(header = Header(seq = 10, stamp = rospy.get_rostime(), frame_id = 'map'))
         for particle in self.particle_manager.current_particles:
@@ -107,7 +116,7 @@ class ParticleFilter(object):
                 #Keep the most relevant particles
                 self.particle_manager.deleteParticles((dto, r, dt01), self.sensor_manager.closest_dist, self.occupancy_field)
                 # #Assign more particles
-                self.particle_manager.addParticles()
+                self.particle_manager.addParticlesHeading(self.occupancy_field,self.sensor_manager.min_index)
 
                 #Send current particles via publisher
                 poseArray = PoseArray(header = Header(seq = 10, stamp = rospy.get_rostime(), frame_id = 'map'))
