@@ -75,7 +75,8 @@ class ParticleFilter(object):
                     rospy.sleep(.5)
                     continue#wait for confirmation that we have update laser scan
         print('EXITING While')
-        self.particle_manager.initParticleHeading(xy_theta, self.occupancy_field, self.sensor_manager.min_index)
+        self.particle_manager.initParticlesHeading(xy_theta, self.occupancy_field, self.sensor_manager.min_index)
+        # self.particle_manager.initParticles(xy_theta)
         # send an initial pose array
         poseArray = PoseArray(header = Header(seq = 10, stamp = rospy.get_rostime(), frame_id = 'map'))
         for particle in self.particle_manager.current_particles:
@@ -114,9 +115,10 @@ class ParticleFilter(object):
                 print("Flag broken")
                 print(self.sensor_manager.closest_dist)
                 #Keep the most relevant particles
-                self.particle_manager.deleteParticles((dto, r, dt01), self.sensor_manager.closest_dist, self.occupancy_field)
+                self.particle_manager.deleteParticles((dto, r, dt01), self.sensor_manager.closest_dist, self.sensor_manager.min_index, self.occupancy_field)
                 # #Assign more particles
-                self.particle_manager.addParticlesHeading(self.occupancy_field,self.sensor_manager.min_index)
+                # self.particle_manager.addParticlesHeading(self.occupancy_field,self.sensor_manager.min_index)
+                self.particle_manager.addParticles()
 
                 #Send current particles via publisher
                 poseArray = PoseArray(header = Header(seq = 10, stamp = rospy.get_rostime(), frame_id = 'map'))

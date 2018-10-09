@@ -13,7 +13,7 @@ import rospy
 import numpy as np
 import math 
 from geometry_msgs.msg import PoseWithCovarianceStamped, PoseArray, Pose
-from sensorArray import SensorArray
+from sensorArray import SensorArray, angle_diff
 from helper_functions import TFHelper
 from occupancy_field import OccupancyField
 import matplotlib.pyplot as mpl
@@ -28,15 +28,16 @@ def angle_normalize(z):
     return math.atan2(math.sin(z), math.cos(z))
 
 
+
 class ParticleManager:
     def __init__(self):
 
         self.current_particles = []
-        self.max_particles = 8 * 8 * 5
-        self.percent_keep = 0.2
-        self.num_mult = self.max_particles*self.percent_keep/10
-        self.std_yaw =  math.pi/12.0
-        self.std_pos = .1
+        self.max_particles = 64 * 64 * 5
+        self.percent_keep = 0.5
+        self.num_mult = int(1/self.percent_keep) -1
+        self.std_yaw =  math.pi/72.0
+        self.std_pos = .01
         self.prop_yaw = 5 #proportion of variation in yaw
         # self.start_part = 1000 # number of particles to start the
         #ROS
@@ -49,7 +50,7 @@ class ParticleManager:
 
         xy_yaw - Tuple of robots initial (x,y,yaw) map position
         """
-        init_std = .3
+        init_std = 1.5
         init_yaw = math.pi/2
         yaws = np.expand_dims(np.random.normal(xy_yaw[2], init_yaw, self.max_particles), -1)
         xs = np.expand_dims(np.random.normal(xy_yaw[0], init_std, self.max_particles), -1)
@@ -57,8 +58,9 @@ class ParticleManager:
         weights = np.zeros_like(ys)
         self.current_particles = np.concatenate([xs, ys, yaws, weights],axis = 1)
 
-    def initParticleHeading(self, xy_yaw, occupancy_field, closest_index):
-        init_std = .3
+
+    def initParticlesHeading(self, xy_yaw, occupancy_field, closest_index):
+        init_std = 1.5
         xs = np.expand_dims(np.random.normal(xy_yaw[0], init_std, self.max_particles), -1)
         ys = np.expand_dims(np.random.normal(xy_yaw[1], init_std, self.max_particles), -1)
         weights = np.zeros_like(ys)
@@ -67,9 +69,13 @@ class ParticleManager:
         closest_index = math.radians(closest_index)
         for i in range(len(xs)):
             p_closest, obstacle_yaw = occupancy_field.get_closest_obstacle_distance(xs[i,0], ys[i,0])
-            yaws[i,0] = angle_normalize(obstacle_yaw- closest_index)
+            try:
+                yaws[i,0] = angle_normalize(obstacle_yaw- closest_index)
+            except:
+                yaws[i,0] = 0.0
 
         self.current_particles = np.concatenate([xs, ys, yaws, weights],axis = 1)
+
 
     def getMapBounds(self, occupancy_field):
         """
@@ -150,6 +156,7 @@ class ParticleManager:
         self.std_pos = max(0.1, self.std_pos - 0.002)
         self.current_particles = np.concatenate([self.current_particles, new_particles], axis = 0)
 
+
     def addParticles(self):
         """
         First pass. Knowing we cull 80% of particles each iteration
@@ -159,22 +166,23 @@ class ParticleManager:
         their weight
 
         """
+        self.current_particles[:,3] *= .5
         new_particles = []
         for particle in self.current_particles:
             yaws = np.expand_dims(np.random.normal(particle[2], self.std_yaw, self.num_mult), -1)
             xs = np.expand_dims(np.random.normal(particle[0], self.std_pos, self.num_mult), -1)
             ys = np.expand_dims(np.random.normal(particle[1], self.std_pos, self.num_mult), -1)
-            weights = np.zeros_like(ys)
+            weights = np.zeros_like(ys) + particle[3]
             new_particles.append(np.concatenate([xs, ys, yaws, weights],axis = 1))
         new_particles = np.concatenate(new_particles, axis = 0)
-        self.std_pos = max(0.01, self.std_pos - 0.002)
-        self.std_yaw = max(math.pi/36.0, self.std_yaw - math.pi/72.0)
+        # self.std_pos = max(0.01, self.std_pos - 0.002)
+        # self.std_yaw = max(math.pi/36.0, self.std_yaw - math.pi/72.0)
 
         self.current_particles = np.concatenate([self.current_particles, new_particles], axis = 0)
 
 
 
-    def deleteParticles(self, dt0_r_dt1, closest_point, occupancy_field):
+    def deleteParticles(self, dt0_r_dt1, closest_point, closest_yaw, occupancy_field):
         """
         Cull particles based on distance to nearest object
 
@@ -187,7 +195,7 @@ class ParticleManager:
         """
 
         self.updateParticles(dt0_r_dt1)
-        self.updateWeights(closest_point, occupancy_field)
+        self.updateWeights(closest_point, closest_yaw, occupancy_field)
         indices_good = np.argsort(self.current_particles[:,3])
         self.current_particles = self.current_particles[indices_good[:int(self.max_particles * self.percent_keep)]]
 
@@ -203,7 +211,9 @@ class ParticleManager:
         """
 
         yaw = self.current_particles[:,2]
-        dt0, r, dt1 = dt0_r_dt1
+        dt0 = dt0_r_dt1[0]#+np.random.normal(0, math.pi/72, len(self.current_particles))
+        r = dt0_r_dt1[1]
+        dt1 = dt0_r_dt1[2]
         yaw = yaw + dt0
         dx = r * np.cos(yaw)#if normal coordinate system
         dy = r * np.sin(yaw)
@@ -213,20 +223,24 @@ class ParticleManager:
         self.current_particles[:,1] += dy
 
 
-    def updateWeights(self, closest_point, OccupancyField):
+    def updateWeights(self, closest_point, closest_yaw, OccupancyField):
         """
         Update the weighting for a given particle based on distance to closest object
         compared to robot.
         closest_point - distance (meters) that the closest occupancy to the robot is
         occupancy_field - array of distance to closest occupancy for any given map coordinate
         """
-
+        yaw_effect = 0.0
         for index in range(len(self.current_particles)):
             x = self.current_particles[index,0]
             y = self.current_particles[index,1]
             p_closest, obstacle_yaw = OccupancyField.get_closest_obstacle_distance(x, y)
-
-            self.current_particles[index, 3] = abs(closest_point - p_closest)
+            try:
+                yaw_weight = abs(angle_diff(obstacle_yaw, closest_yaw)) #Between 0 and pi
+            except:
+                yaw_weight = np.inf
+            dist_weight = abs(closest_point - p_closest)
+            self.current_particles[index, 3] += yaw_weight*yaw_effect + dist_weight
 
 
 
