@@ -62,7 +62,10 @@ class TFHelper(object):
         return (pose.position.x, pose.position.y, angles[2])
 
     def convert_xy_and_theta_to_pose(self, x, y ,yaw):
-        """ Convert pose (geometry_msgs.Pose) to a (x,y,yaw) tuple """
+        """
+        Convert pose (geometry_msgs.Pose) to a (x,y,yaw) tuple
+        for creation of pose array
+        """
         q = t.quaternion_from_euler(0,0,yaw,'rxyz')
 
         pose = Pose()

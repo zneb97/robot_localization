@@ -2,7 +2,7 @@
 
 """
 Ben Ziemann / Nick Steelman
-Last updated: 10/3/18
+Last updated: 10/11/18
 
 Position, cull, and update particles as needed to determine location
 of the robot
@@ -17,8 +17,6 @@ from sensorArray import SensorArray, angle_diff
 from helper_functions import TFHelper
 from occupancy_field import OccupancyField
 import matplotlib.pyplot as mpl
-
-#Covariance for multi-dimensional normalizaion
 
 
 def angle_normalize(z):
@@ -50,7 +48,7 @@ class ParticleManager:
 
         xy_yaw - Tuple of robots initial (x,y,yaw) map position
         """
-        init_std = 1.5
+        init_std = .3
         init_yaw = math.pi/2
         yaws = np.expand_dims(np.random.normal(xy_yaw[2], init_yaw, self.max_particles), -1)
         xs = np.expand_dims(np.random.normal(xy_yaw[0], init_std, self.max_particles), -1)
@@ -60,12 +58,20 @@ class ParticleManager:
 
 
     def initParticlesHeading(self, xy_yaw, occupancy_field, closest_index):
+        """
+        Place particles based on the robot's alignment with the nearest obstacle
+
+        xy_yaw - Tuple of robots initial (x,y,yaw) map position
+        occupancy_filed - map of nearest occupencies for given coordinate
+        closest_index - heading of the nearest obstacle based on robot laser scan
+        """
         init_std = 1.5
         xs = np.expand_dims(np.random.normal(xy_yaw[0], init_std, self.max_particles), -1)
         ys = np.expand_dims(np.random.normal(xy_yaw[1], init_std, self.max_particles), -1)
         weights = np.zeros_like(ys)
         yaws = np.zeros_like(ys)
 
+        #Calculate heading in relation to closest obstacle
         closest_index = math.radians(closest_index)
         for i in range(len(xs)):
             p_closest, obstacle_yaw = occupancy_field.get_closest_obstacle_distance(xs[i,0], ys[i,0])
@@ -86,9 +92,14 @@ class ParticleManager:
 
 
     def initParticlesUniform(self, occupancy_field):
-        """ This will initialize a set of points evenly spaced in the map with a
-        variety of angles for each particle """
+        """
+        This will initialize a set of points evenly spaced in the map with a
+        variety of angles for each particle
+
+        occupancy_filed - map of nearest occupencies for given coordinate
+        """
         
+        #Get map and spacing info
         of = occupancy_field
         m_width, m_height, x_off, y_off = self.getMapBounds(of)
         num_points = int(self.max_particles / self.prop_yaw)
@@ -112,6 +123,7 @@ class ParticleManager:
         points = np.concatenate([x_values, y_values, yaw_values, weight_values], axis = 1)
         points = np.tile(points, [self.prop_yaw,1])
 
+        #Place particles
         inc = 2 * math.pi / self.prop_yaw
         for i in range(self.prop_yaw):
             beginRange = (i*num_points)
@@ -133,12 +145,14 @@ class ParticleManager:
 
     def addParticlesHeading(self, occupancy_field, closest_index):
         """
-        First pass. Knowing we cull 80% of particles each iteration
-        we add 4 new ones around the remaining ones.
+        First pass. Knowing we cull self.percent_keep of particles each iteration
+        we add new ones around the remaining ones. Heading's based on nearest obstacle
 
         TODO: Distribute the number of particles around the current particles based on
         their weight
 
+        occupancy_filed - map of nearest occupencies for given coordinate
+        closest_index - heading of the nearest obstacle based on robot laser scan
         """
         new_particles = []
         for particle in self.current_particles:
@@ -152,6 +166,7 @@ class ParticleManager:
                 yaws[i,0] = angle_normalize(obstacle_yaw + (math.pi/2) - closest_index)
 
             new_particles.append(np.concatenate([xs, ys, yaws, weights],axis = 1))
+
         new_particles = np.concatenate(new_particles, axis = 0)
         self.std_pos = max(0.1, self.std_pos - 0.002)
         self.current_particles = np.concatenate([self.current_particles, new_particles], axis = 0)
@@ -174,6 +189,7 @@ class ParticleManager:
             ys = np.expand_dims(np.random.normal(particle[1], self.std_pos, self.num_mult), -1)
             weights = np.zeros_like(ys) + particle[3]
             new_particles.append(np.concatenate([xs, ys, yaws, weights],axis = 1))
+
         new_particles = np.concatenate(new_particles, axis = 0)
         # self.std_pos = max(0.01, self.std_pos - 0.002)
         # self.std_yaw = max(math.pi/36.0, self.std_yaw - math.pi/72.0)

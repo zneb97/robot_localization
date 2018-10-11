@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 Ben Ziemann / Nick Steelman
-Last updated: 9/30/18
+Last updated: 10/11/18
 
 Handle the neato's sensors intake
 """
@@ -93,9 +93,7 @@ class SensorArray:
         self.yaw = angles[2]
 
         if self.old_x is None:
-            print("Setting")
             self.setOld()
-        # print("this is our old x %f" %self.old_x)
 
 
     def getDelta(self):
@@ -128,13 +126,11 @@ class SensorArray:
         msg - LaserScan rosmsg
         """
         if self.laser_flag:
-            print('Checking Laser')
             ranges = np.array(msg.ranges)
             ranges[np.where(ranges==0.0)[0]] = np.inf
             self.min_index = np.argmin(ranges)
             self.closest_dist = ranges[self.min_index]
             self.laser_flag = False
-            print('Checked Laser')
 
 
 if __name__ == "__main__":
@@ -142,7 +138,7 @@ if __name__ == "__main__":
     sensor_manager = SensorArray()
     rate = rospy.Rate(5)
 
-
+    #Debugging
     while not(rospy.is_shutdown()):
         # in the main loop all we do is continuously broadcast the latest
         # map to odom transform
