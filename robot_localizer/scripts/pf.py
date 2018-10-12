@@ -97,7 +97,6 @@ class ParticleFilter(object):
             continue
 
         # Main Loop
-        print("there are particles now")
         while not(rospy.is_shutdown()):
 
             #See how the robot has moved
