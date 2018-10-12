@@ -32,7 +32,7 @@ class ParticleManager:
 
         self.current_particles = []
         self.max_particles = 64 * 64 * 5
-        self.percent_keep = 0.2
+        self.percent_keep = 0.5
         self.num_mult = int(1/self.percent_keep) -1
         self.std_yaw =  math.pi/72.0
         self.std_pos = .01
